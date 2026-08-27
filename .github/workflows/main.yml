@@ -1,69 +1,27 @@
-import feedparser
-import requests
-from datetime import datetime
+name: Robo Tributario
 
-# ================= CONFIGURAÇÕES =================
-TELEGRAM_TOKEN = 'COLE_SEU_TOKEN_AQUI'
-CHAT_ID = 'COLE_SEU_CHAT_ID_AQUI'
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
 
-# Fontes de notícias oficiais em formato RSS
-FONTES_RSS = {
-    "Senado": "https://www12.senado.leg.br/noticias/feed/todas",
-    "Câmara": "https://www.camara.leg.br/noticias/rss/"
-}
+jobs:
+  executar:
+    runs-on: ubuntu-latest
 
-# Palavras-chave para filtrar as notícias
-PALAVRAS_CHAVE = ['reforma tributária', 'imposto', 'cbs', 'ibs', 'iva']
+    steps:
+      - name: Baixar arquivos
+        uses: actions/checkout@v4
 
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-# ================= FUNÇÕES =================
+      - name: Instalar bibliotecas
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-def enviar_mensagem(texto):
-    """Envia a mensagem para o Telegram"""
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": texto,
-        "parse_mode": "HTML"
-    }
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Erro ao enviar mensagem: {e}")
-
-
-def buscar_noticias():
-    """Busca nas fontes, filtra a reforma tributária e envia"""
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Buscando atualizações na nuvem...")
-    novas_noticias = 0
-
-    for fonte_nome, url in FONTES_RSS.items():
-        feed = feedparser.parse(url)
-
-        for noticia in feed.entries:
-            titulo = noticia.title.lower()
-
-            # Verifica se alguma palavra-chave está no título
-            if any(palavra in titulo for palavra in PALAVRAS_CHAVE):
-                link = noticia.link
-
-                mensagem = f"🚨 <b>Atualização ({fonte_nome})</b>\n\n"
-                mensagem += f"📰 <b>{noticia.title}</b>\n"
-                mensagem += f"🔗 <a href='{link}'>Leia a matéria completa</a>"
-
-                enviar_mensagem(mensagem)
-                novas_noticias += 1
-
-    if novas_noticias == 0:
-        print("Nenhuma novidade sobre a reforma tributária no momento.")
-    else:
-        print(f"{novas_noticias} notícia(s) enviada(s)!")
-
-
-# ================= EXECUÇÃO =================
-
-print("🤖 Robô Tributário iniciado pelo GitHub Actions!\n")
-
-# Na nuvem, basta chamar a função UMA vez no final do arquivo.
-# O próprio GitHub Actions vai ligar esse arquivo a cada 4 horas, rodar essa linha e desligar o servidor.
-buscar_noticias()
+      - name: Rodar robo
+        run: python main.py
